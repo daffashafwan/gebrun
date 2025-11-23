@@ -22,4 +22,5 @@ func Execute() {
 
 func init() {
     rootCmd.AddCommand(analyzeCmd)
+    rootCmd.AddCommand(versionCmd)
 }

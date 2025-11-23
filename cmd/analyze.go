@@ -13,14 +13,15 @@ import (
 var (
     dir          string
     format       string
-    fileExclusion []string
+    fileExclusion string
 )
 
 var analyzeCmd = &cobra.Command{
     Use:   "analyze",
     Short: "Analyze Go code and print arithmetic operations + call graph",
     Run: func(cmd *cobra.Command, args []string) {
-        res, err := analyzer.ParseAndCollect(dir, fileExclusion)
+        fileExclusionSuffixes := parseFileExclustionSuffixes(fileExclusion)
+        res, err := analyzer.ParseAndCollect(dir, fileExclusionSuffixes)
         if err != nil {
             log.Fatal(err)
         }
@@ -43,5 +44,12 @@ var analyzeCmd = &cobra.Command{
 func init() {
     analyzeCmd.Flags().StringVarP(&dir, "dir", "d", ".", "Root directory to scan")
     analyzeCmd.Flags().StringVarP(&format, "format", "f", "table", "Output format: table|groupedtable|json|plantuml")
-    analyzeCmd.Flags().StringArrayVarP(&fileExclusion, "exclude", "e", []string{}, "File patterns to exclude from analysis")
+    analyzeCmd.Flags().StringVarP(&fileExclusion, "exclude", "e", "", "File patterns to exclude from analysis, separated by comma (e.g., _test.go,generated.go)")
+}
+
+func parseFileExclustionSuffixes(exclusion string) []string {
+    if exclusion == "" {
+        return []string{}
+    }
+    return strings.Split(exclusion, ",")
 }
