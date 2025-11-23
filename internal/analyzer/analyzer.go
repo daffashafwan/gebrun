@@ -131,29 +131,44 @@ func ParseAndCollect(root string) (Result, error) {
 					// arithmetic expressions
 					if assign, ok := n2.(*ast.AssignStmt); ok {
 						for i, rhs := range assign.Rhs {
-							if bin, ok := rhs.(*ast.BinaryExpr); ok {
-								op := bin.Op.String()
-								if arithmeticOps[op] {
-									pos := fset.Position(bin.Pos())
-									output := exprToString(assign.Lhs[i])
-									inputs := extractIdents(bin)
-									expr := strings.TrimSpace(safeSlice(srcBytes, bin.Pos(), bin.End()))
-									if expr == "" {
-										expr = nodeToString(bin)
-									}
-									opRec := Operation{
-										Func:   fname,
-										Pos:    pos.String(),
-										Op:     op,
-										Output: output,
-										Input:  inputs,
-										Expr:   expr,
-									}
-									ops = append(ops, opRec)
-									s := byFunc[fname]
-									s.Operations = append(s.Operations, opRec)
-									byFunc[fname] = s
+							var op string
+							var expr ast.Expr = rhs
+
+							// handle assignment operators like +=, -=, etc
+							// or normal binary expressions
+							if assign.Tok != token.ASSIGN {
+								op = assign.Tok.String() // "+=", "-=", "*=", "/=", etc
+							} else if bin, ok := rhs.(*ast.BinaryExpr); ok {
+								
+								// normal binary expression
+								// e.g., a = b + c
+								op = bin.Op.String()
+								expr = bin
+							} else {
+								continue
+							}
+
+							if arithmeticOps[strings.TrimRight(op, "=")] { // cek aritmatik
+								pos := fset.Position(assign.Pos())
+								output := exprToString(assign.Lhs[i])
+								inputs := extractIdents(expr) // ambil semua identifier di kanan
+								exprStr := strings.TrimSpace(safeSlice(srcBytes, expr.Pos(), expr.End()))
+								if exprStr == "" {
+									exprStr = nodeToString(expr)
 								}
+
+								opRec := Operation{
+									Func:   fname,
+									Pos:    pos.String(),
+									Op:     op,
+									Output: output,
+									Input:  inputs,
+									Expr:   exprStr,
+								}
+								ops = append(ops, opRec)
+								s := byFunc[fname]
+								s.Operations = append(s.Operations, opRec)
+								byFunc[fname] = s
 							}
 						}
 						return true
