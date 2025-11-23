@@ -275,10 +275,11 @@ func contains(list []string, s string) bool {
 // Output: pretty table to stdout
 func PrintTable(res Result) {
 	fmt.Println("Arithmetic operations found:\n")
-	fmt.Printf("%-40s | %-8s | %s\n", "Function", "Op", "Expression (pos)")
-	fmt.Println(strings.Repeat("-", 110))
+	fmt.Printf("%-40s | %-8s | %-15s | %-25s | %s\n", "Function", "Op", "Output", "Input(s)", "Expression (pos)")
+	fmt.Println(strings.Repeat("-", 130))
 	for _, o := range res.Operations {
-		fmt.Printf("%-40s | %-8s | %s (%s)\n", o.Func, o.Op, truncateClean(o.Expr, 60), o.Pos)
+		fmt.Printf("%-40s | %-8s | %-15s | %-25s | %s (%s)\n",
+			o.Func, o.Op, o.Output, strings.Join(o.Input, ", "), truncateClean(o.Expr, 50), o.Pos)
 	}
 
 	fmt.Println("\nCall graph (caller -> callee):\n")
@@ -288,6 +289,7 @@ func PrintTable(res Result) {
 		fmt.Printf("%-40s -> %s (%s)\n", c.Caller, c.Callee, c.Pos)
 	}
 }
+
 
 func truncateClean(s string, n int) string {
 	if len(s) <= n {
@@ -344,7 +346,13 @@ func PrintPlantUML(res Result) {
 		}
 		fmt.Printf("note over %s\n", aliases[f])
 		for _, o := range opers {
-			line := fmt.Sprintf("%s %s (%s)", o.Op, truncateClean(o.Expr, 80), o.Pos)
+			line := fmt.Sprintf("%s %s = %s (%s) (%s)",
+				o.Op,
+				strings.Join(o.Input, ", "),
+				o.Output,
+				truncateClean(o.Expr, 60),
+				o.Pos,
+			)
 			fmt.Println(line)
 		}
 		fmt.Println("end note")
