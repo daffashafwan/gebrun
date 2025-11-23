@@ -216,10 +216,21 @@ func ParseAndCollect(root string) (Result, error) {
 		ByFunc:     byFunc,
 	}
 	return res, nil
-}
+} 
 
 // parseAndCollectGreedy is a more aggressive version that scans all nodes recursively
 // dont try this at home
+// do not ever use this in production
+// or even in local development
+// it will probably break your computer
+// you have been warned
+// use at your own risk
+// seriously
+// you have been warned
+// this is just for fun
+// dont sue me
+// ok enough warnings
+// enjoy :)
 func ParseAndCollectGreedy(root string) (Result, error) {
 	files, err := walkGoFiles(root)
 	if err != nil {
