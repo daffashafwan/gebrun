@@ -656,13 +656,35 @@ func filterResult(res Result, funcFilter string, pkgFilter string) Result {
 	return res
 }
 
-func extractIdents(e ast.Expr) []string {
+func extractIdents(expr ast.Expr) []string {
 	var idents []string
-	ast.Inspect(e, func(n ast.Node) bool {
-		if id, ok := n.(*ast.Ident); ok {
-			idents = append(idents, id.Name)
+
+	var walk func(e ast.Expr)
+	walk = func(e ast.Expr) {
+		switch v := e.(type) {
+		case *ast.Ident:
+			idents = append(idents, v.Name)
+		case *ast.SelectorExpr:
+			base := exprToString(v.X)
+			idents = append(idents, fmt.Sprintf("%s.%s", base, v.Sel.Name))
+		case *ast.CallExpr:
+			for _, arg := range v.Args {
+				walk(arg)
+			}
+		case *ast.BinaryExpr:
+			walk(v.X)
+			walk(v.Y)
+		case *ast.ParenExpr:
+			walk(v.X)
+		case *ast.UnaryExpr:
+			walk(v.X)
+		case *ast.IndexExpr:
+			walk(v.X)
+			walk(v.Index)
+		// need to handle more expr types as needed
 		}
-		return true
-	})
+	}
+
+	walk(expr)
 	return idents
 }
