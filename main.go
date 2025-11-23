@@ -1,7 +1,7 @@
 package main
 
 import (
-	"gebrun/cmd"
+	"github.com/daffashafwan/gebrun/cmd"
 )
 
 func main() {

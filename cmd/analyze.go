@@ -5,7 +5,7 @@ import (
 	"log"
 	"strings"
 
-	"gebrun/internal/analyzer"
+	"github.com/daffashafwan/gebrun/internal/analyzer"
 
 	"github.com/spf13/cobra"
 )

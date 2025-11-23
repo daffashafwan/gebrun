@@ -1,4 +1,4 @@
-module gebrun
+module github.com/daffashafwan/gebrun
 
 go 1.24.5
 
