@@ -203,6 +203,101 @@ func ParseAndCollect(root string) (Result, error) {
 	return res, nil
 }
 
+// parseAndCollectGreedy is a more aggressive version that scans all nodes recursively
+// dont try this at home
+func ParseAndCollectGreedy(root string) (Result, error) {
+	files, err := walkGoFiles(root)
+	if err != nil {
+		return Result{}, err
+	}
+	fset := token.NewFileSet()
+	ops := []Operation{}
+	calls := []Call{}
+	byFunc := map[string]Summary{}
+
+	for _, file := range files {
+		srcBytes, err := readFile(file)
+		if err != nil {
+			return Result{}, err
+		}
+		f, err := parser.ParseFile(fset, file, srcBytes, parser.ParseComments)
+		if err != nil {
+			return Result{}, err
+		}
+
+		ast.Inspect(f, func(n ast.Node) bool {
+			if fn, ok := n.(*ast.FuncDecl); ok {
+				fname := fn.Name.Name
+				if fn.Recv != nil && len(fn.Recv.List) > 0 {
+					recvType := exprToString(fn.Recv.List[0].Type)
+					fname = recvTypeClean(recvType) + "." + fname
+				}
+				if _, exists := byFunc[fname]; !exists {
+					byFunc[fname] = Summary{}
+				}
+
+				scanNodeRecursive(fn.Body, fset, srcBytes, fname, &ops, &calls, byFunc)
+			}
+			return true
+		})
+	}
+
+	// sort untuk deterministik
+	sort.SliceStable(ops, func(i, j int) bool { return ops[i].Pos < ops[j].Pos })
+	sort.SliceStable(calls, func(i, j int) bool { return calls[i].Pos < calls[j].Pos })
+	for k := range byFunc {
+		s := byFunc[k]
+		sort.SliceStable(s.Operations, func(i, j int) bool { return s.Operations[i].Pos < s.Operations[j].Pos })
+		sort.Strings(s.Callees)
+		byFunc[k] = s
+	}
+
+	return Result{
+		ScannedAt:  time.Now().UTC(),
+		Root:       root,
+		Operations: ops,
+		Calls:      calls,
+		ByFunc:     byFunc,
+	}, nil
+}
+
+func scanNodeRecursive(n ast.Node, fset *token.FileSet, src []byte, fname string, ops *[]Operation, calls *[]Call, byFunc map[string]Summary) {
+	if n == nil {
+		return
+	}
+
+	switch v := n.(type) {
+	case *ast.BinaryExpr:
+		op := v.Op.String()
+		if arithmeticOps[op] {
+			pos := fset.Position(v.Pos())
+			expr := exprToString(v)
+			opRec := Operation{Func: fname, Pos: pos.String(), Op: op, Expr: expr}
+			*ops = append(*ops, opRec)
+			s := byFunc[fname]
+			s.Operations = append(s.Operations, opRec)
+			byFunc[fname] = s
+		}
+	case *ast.CallExpr:
+		callee := exprToString(v.Fun)
+		pos := fset.Position(v.Pos())
+		c := Call{Caller: fname, Callee: callee, Pos: pos.String()}
+		*calls = append(*calls, c)
+		s := byFunc[fname]
+		if !contains(s.Callees, callee) {
+			s.Callees = append(s.Callees, callee)
+		}
+		byFunc[fname] = s
+	}
+
+	ast.Inspect(n, func(child ast.Node) bool {
+		if child != n {
+			scanNodeRecursive(child, fset, src, fname, ops, calls, byFunc)
+		}
+		return true
+	})
+}
+
 func safeSlice(src []byte, start, end token.Pos) string {
     s := int(start) - 1
     e := int(end) - 1
