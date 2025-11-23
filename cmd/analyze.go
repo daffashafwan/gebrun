@@ -11,15 +11,16 @@ import (
 )
 
 var (
-    dir    string
-    format string
+    dir          string
+    format       string
+    fileExclusion []string
 )
 
 var analyzeCmd = &cobra.Command{
     Use:   "analyze",
     Short: "Analyze Go code and print arithmetic operations + call graph",
     Run: func(cmd *cobra.Command, args []string) {
-        res, err := analyzer.ParseAndCollect(dir)
+        res, err := analyzer.ParseAndCollect(dir, fileExclusion)
         if err != nil {
             log.Fatal(err)
         }
@@ -31,6 +32,8 @@ var analyzeCmd = &cobra.Command{
             analyzer.PrintJSON(res)
         case "plantuml":
             analyzer.PrintPlantUML(res)
+        case "groupedtable":
+            analyzer.PrintTableChained(res)
         default:
             fmt.Printf("Unknown format: %s\n", format)
         }
@@ -39,5 +42,6 @@ var analyzeCmd = &cobra.Command{
 
 func init() {
     analyzeCmd.Flags().StringVarP(&dir, "dir", "d", ".", "Root directory to scan")
-    analyzeCmd.Flags().StringVarP(&format, "format", "f", "table", "Output format: table|json|plantuml")
+    analyzeCmd.Flags().StringVarP(&format, "format", "f", "table", "Output format: table|groupedtable|json|plantuml")
+    analyzeCmd.Flags().StringArrayVarP(&fileExclusion, "exclude", "e", []string{}, "File patterns to exclude from analysis")
 }

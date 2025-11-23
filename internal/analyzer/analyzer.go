@@ -71,7 +71,7 @@ func readFile(path string) ([]byte, error) {
 }
 
 // walkGoFiles collects .go files under root (skips vendor and test files by default)
-func walkGoFiles(root string) ([]string, error) {
+func walkGoFiles(root string, fileExclusionSuffix []string) ([]string, error) {
 	var files []string
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -83,7 +83,7 @@ func walkGoFiles(root string) ([]string, error) {
 			}
 			return nil
 		}
-		if filepath.Ext(path) == ".go" && !strings.HasSuffix(path, "_test.go") {
+		if filepath.Ext(path) == ".go" && !isFileExcludedBySuffix(path, fileExclusionSuffix) {
 			files = append(files, path)
 		}
 		return nil
@@ -91,9 +91,18 @@ func walkGoFiles(root string) ([]string, error) {
 	return files, err
 }
 
+func isFileExcludedBySuffix(path string, suffixes []string) bool {
+	for _, s := range suffixes {
+		if strings.HasSuffix(path, s) {
+			return true
+		}
+	}
+	return false
+}
+
 // parseAndCollect scans files and returns operations and calls
-func ParseAndCollect(root string) (Result, error) {
-	files, err := walkGoFiles(root)
+func ParseAndCollect(root string, fileExclusionSuffix []string) (Result, error) {
+	files, err := walkGoFiles(root, fileExclusionSuffix)
 	if err != nil {
 		return Result{}, err
 	}
@@ -232,7 +241,7 @@ func ParseAndCollect(root string) (Result, error) {
 // ok enough warnings
 // enjoy :)
 func ParseAndCollectGreedy(root string) (Result, error) {
-	files, err := walkGoFiles(root)
+	files, err := walkGoFiles(root, []string{})
 	if err != nil {
 		return Result{}, err
 	}
@@ -408,6 +417,34 @@ func PrintTable(res Result) {
 	fmt.Println(strings.Repeat("-", 80))
 	for _, c := range res.Calls {
 		fmt.Printf("%-40s -> %s (%s)\n", c.Caller, c.Callee, c.Pos)
+	}
+}
+
+func PrintTableChained(res Result) {
+	fmt.Println("Arithmetic operations found (grouped by function):\n")
+
+	for fname, f := range res.ByFunc {
+		if len(f.Operations) == 0 {
+			continue
+		}
+		fmt.Printf("Function: %s\n", fname)
+		for _, o := range f.Operations {
+			inputs := strings.Join(o.Input, ", ")
+			if len(inputs) > 60 {
+				inputs = inputs[:57] + "..."
+			}
+
+			expr := truncateClean(o.Expr, 50)
+
+			fmt.Printf("  Op: %-3s | Output: %-20s | Inputs: %-60s | Expr: %s (%s)\n",
+				o.Op, o.Output, inputs, expr, o.Pos)
+		}
+		fmt.Println()
+	}
+
+	fmt.Println("\nCall graph (caller -> callee):\n")
+	for _, c := range res.Calls {
+		fmt.Printf("  %s -> %s (%s)\n", c.Caller, c.Callee, c.Pos)
 	}
 }
 
