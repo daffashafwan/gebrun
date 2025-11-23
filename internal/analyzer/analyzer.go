@@ -9,7 +9,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -446,6 +448,94 @@ func PrintTableChained(res Result) {
 	for _, c := range res.Calls {
 		fmt.Printf("  %s -> %s (%s)\n", c.Caller, c.Callee, c.Pos)
 	}
+}
+
+func PrintTableHTMLGrouped(res Result, filename string) error {
+	var sb strings.Builder
+
+	sb.WriteString(`<!DOCTYPE html>
+		<html lang="en">
+		<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+		<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+		<title>Analysis Result</title>
+		<style>
+		.table-responsive { max-height: 400px; overflow-y: auto; margin-bottom: 20px; }
+		.func-header { cursor: pointer; }
+		</style>
+		</head>
+		<body class="p-3">
+		<div class="container-fluid">
+		<h2>Arithmetic Operations (Grouped by Function)</h2>
+	`)
+
+	for funcName, summary := range res.ByFunc {
+		funcID := strings.ReplaceAll(funcName, ".", "_")
+		sb.WriteString(fmt.Sprintf(`
+			<div class="card mb-2">
+			<div class="card-header func-header" data-bs-toggle="collapse" data-bs-target="#%s" aria-expanded="true" aria-controls="%s">
+				%s
+			</div>
+			<div id="%s" class="collapse show">
+				<div class="table-responsive">
+				<table class="table table-striped table-bordered table-sm">
+					<thead class="table-dark">
+					<tr><th>Op</th><th>Output</th><th>Input(s)</th><th>Expression (pos)</th></tr>
+					</thead>
+					<tbody>
+			`, funcID, funcID, funcName, funcID))
+
+					for _, o := range summary.Operations {
+						sb.WriteString(fmt.Sprintf(
+							"<tr><td>%s</td><td>%s</td><td>%s</td><td>%s (%s)</td></tr>\n",
+							o.Op, o.Output, strings.Join(o.Input, ", "), o.Expr, o.Pos))
+					}
+
+					sb.WriteString(`
+					</tbody>
+				</table>
+				</div>
+			</div>
+			</div>
+			`)
+	}
+
+	sb.WriteString("<h2>Call Graph (caller -> callee)</h2>\n")
+	sb.WriteString(`<div class="table-responsive"><table class="table table-striped table-bordered table-sm"><thead class="table-dark"><tr><th>Caller</th><th>Callee</th><th>Position</th></tr></thead><tbody>`)
+	for _, c := range res.Calls {
+		sb.WriteString(fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%s</td></tr>\n", c.Caller, c.Callee, c.Pos))
+	}
+	sb.WriteString("</tbody></table></div>\n")
+
+	sb.WriteString(`
+		</div>
+		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+		</body>
+		</html>
+	`)
+
+	err := os.WriteFile(filename, []byte(sb.String()), 0644)
+	if err != nil {
+		return err
+	}
+
+	openBrowser(filename)
+	return nil
+}
+
+// openBrowser tries to open the file in default browser
+func openBrowser(path string) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", path)
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", path)
+	default: // linux
+		cmd = exec.Command("xdg-open", path)
+	}
+	_ = cmd.Start()
 }
 
 

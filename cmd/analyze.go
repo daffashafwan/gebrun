@@ -35,6 +35,8 @@ var analyzeCmd = &cobra.Command{
             analyzer.PrintPlantUML(res)
         case "groupedtable":
             analyzer.PrintTableChained(res)
+        case "html":
+            analyzer.PrintTableHTMLGrouped(res, "gebrun_report.html")
         default:
             fmt.Printf("Unknown format: %s\n", format)
         }
@@ -43,7 +45,7 @@ var analyzeCmd = &cobra.Command{
 
 func init() {
     analyzeCmd.Flags().StringVarP(&dir, "dir", "d", ".", "Root directory to scan")
-    analyzeCmd.Flags().StringVarP(&format, "format", "f", "table", "Output format: table|groupedtable|json|plantuml")
+    analyzeCmd.Flags().StringVarP(&format, "format", "f", "table", "Output format: table|groupedtable|json|plantuml|html")
     analyzeCmd.Flags().StringVarP(&fileExclusion, "exclude", "e", "", "File patterns to exclude from analysis, separated by comma (e.g., _test.go,generated.go)")
 }
 
