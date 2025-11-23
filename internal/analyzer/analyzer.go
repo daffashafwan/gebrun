@@ -21,6 +21,8 @@ type Operation struct {
 	Pos     string `json:"pos"`
 	Op      string `json:"op"`
 	Expr    string `json:"expr"`
+	Output  string 	`json:"output"`
+	Input   []string `json:"input"`
 }
 
 // Call represents a call from one function to another
@@ -127,25 +129,35 @@ func ParseAndCollect(root string) (Result, error) {
 				// inspect function body for binary expressions and calls
 				ast.Inspect(fn.Body, func(n2 ast.Node) bool {
 					// arithmetic expressions
-					if bin, ok := n2.(*ast.BinaryExpr); ok {
-						op := bin.Op.String()
-						if arithmeticOps[op] {
-							pos := fset.Position(bin.Pos())
-							expr := strings.TrimSpace(safeSlice(srcBytes, bin.Pos(), bin.End()))
-						// Fall back to building expr string
-						if expr == "" {
-							expr = nodeToString(bin)
+					if assign, ok := n2.(*ast.AssignStmt); ok {
+						for i, rhs := range assign.Rhs {
+							if bin, ok := rhs.(*ast.BinaryExpr); ok {
+								op := bin.Op.String()
+								if arithmeticOps[op] {
+									pos := fset.Position(bin.Pos())
+									output := exprToString(assign.Lhs[i])
+									inputs := extractIdents(bin)
+									expr := strings.TrimSpace(safeSlice(srcBytes, bin.Pos(), bin.End()))
+									if expr == "" {
+										expr = nodeToString(bin)
+									}
+									opRec := Operation{
+										Func:   fname,
+										Pos:    pos.String(),
+										Op:     op,
+										Output: output,
+										Input:  inputs,
+										Expr:   expr,
+									}
+									ops = append(ops, opRec)
+									s := byFunc[fname]
+									s.Operations = append(s.Operations, opRec)
+									byFunc[fname] = s
+								}
+							}
 						}
-						opRec := Operation{Func: fname, Pos: pos.String(), Op: op, Expr: expr}
-						ops = append(ops, opRec)
-						// add to byFunc
-						s := byFunc[fname]
-						s.Operations = append(s.Operations, opRec)
-						byFunc[fname] = s
 						return true
 					}
-					return true
-				}
 				// function calls
 				if call, ok := n2.(*ast.CallExpr); ok {
 					// try to get callee as string
@@ -386,4 +398,15 @@ func filterResult(res Result, funcFilter string, pkgFilter string) Result {
 	res.Calls = filteredCalls
 	res.ByFunc = filteredByFunc
 	return res
+}
+
+func extractIdents(e ast.Expr) []string {
+	var idents []string
+	ast.Inspect(e, func(n ast.Node) bool {
+		if id, ok := n.(*ast.Ident); ok {
+			idents = append(idents, id.Name)
+		}
+		return true
+	})
+	return idents
 }
