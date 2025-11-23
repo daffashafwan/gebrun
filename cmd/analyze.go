@@ -19,7 +19,7 @@ var analyzeCmd = &cobra.Command{
     Use:   "analyze",
     Short: "Analyze Go code and print arithmetic operations + call graph",
     Run: func(cmd *cobra.Command, args []string) {
-        res, err := analyzer.ParseAndCollectGreedy(dir)
+        res, err := analyzer.ParseAndCollect(dir)
         if err != nil {
             log.Fatal(err)
         }
