@@ -131,7 +131,7 @@ func ParseAndCollect(root string) (Result, error) {
 						op := bin.Op.String()
 						if arithmeticOps[op] {
 							pos := fset.Position(bin.Pos())
-							expr := strings.TrimSpace(string(srcBytes[bin.Pos()-1 : bin.End()-1]))
+							expr := strings.TrimSpace(safeSlice(srcBytes, bin.Pos(), bin.End()))
 						// Fall back to building expr string
 						if expr == "" {
 							expr = nodeToString(bin)
@@ -189,6 +189,21 @@ func ParseAndCollect(root string) (Result, error) {
 		ByFunc:     byFunc,
 	}
 	return res, nil
+}
+
+func safeSlice(src []byte, start, end token.Pos) string {
+    s := int(start) - 1
+    e := int(end) - 1
+    if s < 0 {
+        s = 0
+    }
+    if e > len(src) {
+        e = len(src)
+    }
+    if s >= e {
+        return ""
+    }
+    return string(src[s:e])
 }
 
 // helper: convert ast.Expr to a readable string (best-effort)
