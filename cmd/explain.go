@@ -31,7 +31,7 @@ var explainCmd = &cobra.Command{
 }
 
 func init() {
-    explainCmd.Flags().StringVarP(&dir, "expDir", "expD", ".", "Root directory to scan")
-    explainCmd.Flags().StringVarP(&format, "expformat", "expF", "text", "Output format: text|json|plantuml|html")
-    explainCmd.Flags().StringVarP(&fileExclusion, "expExclude", "expE", "", "File patterns to exclude from analysis, separated by comma (e.g., _test.go,generated.go)")
+    explainCmd.Flags().StringVarP(&dir, "dir", "d", ".", "Root directory to scan")
+    explainCmd.Flags().StringVarP(&format, "format", "f", "text", "Output format: text|json|plantuml|html")
+    explainCmd.Flags().StringVarP(&fileExclusion, "exclude", "e", "", "File patterns to exclude from explanation, separated by comma (e.g., _test.go,generated.go)")
 }
