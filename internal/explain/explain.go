@@ -1,4 +1,4 @@
-// package storyteller
+// package explain implements parsing Go code to extract a "story"
 // upgraded version: goroutine (A - linear w/ tags) and worker-pool as goroutine (1)
 //
 // features:
@@ -7,10 +7,6 @@
 // - treat go/worker submit as "goroutine start" and tag internal operations with GoroutineID
 // - build graph nodes/edges with metadata
 // - PrintStoryText outputs linear reading order but marks goroutine starts & defer & channel ops
-//
-// Usage:
-//  res, _ := ParseServiceWithOptions("./path/to/project", ParseOptions{GoroutineModeA: true})
-//  PrintStoryText(res)
 package explain
 
 import (
@@ -766,14 +762,14 @@ func htmlEscape(s string) string {
 // =====================
 
 // QuickParseAndPrint convenience wrapper
-func QuickParseAndPrint(root string) {
-	opts := ParseOptions{GoroutineModeA: true, WorkerPoolAsGoroutine: true}
+func QuickParseAndPrint(root string, fileExclusionSuffixes []string) (res StoryResult) {
+	opts := ParseOptions{GoroutineModeA: true, WorkerPoolAsGoroutine: true, FileExclusionSuffix: fileExclusionSuffixes}
 	res, err := ParseServiceWithOptions(root, opts)
 	if err != nil {
 		fmt.Println("parse error:", err)
 		return
 	}
-	PrintStoryText(res)
+	return res
 }
 
 // =====================
